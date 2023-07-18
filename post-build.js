@@ -65,7 +65,7 @@ const main = async () => {
     require('dotenv').config();
 
     const templateName = process.env.TEMPLATE_NAME;
-    const apiURL = process.env.API_URL;
+    const apiURL = process.env.API_URL || "https://deployapi.ecommcube.com";
 
     let domain = process.env.DOMAIN;
     domain = domain.split(',');
