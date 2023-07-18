@@ -1,0 +1,61 @@
+name: Template Pipeline
+on:
+  repository_dispatch:
+    types: deploy-nextjs-template
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '18.x'
+      - name: Load Environment Variables for template deployment
+        run: |
+          touch .env
+          echo NODE_VERSION=nodejs18.x >> .env
+          echo NODE_OPTIONS=--openssl-legacy-provider >> .env
+          echo AWS_RETRY_MODE=standard >> .env
+          echo AWS_MAX_ATTEMPTS=2 >> .env
+
+          echo API_URL=${{ vars.API_URL }} >> .env
+          echo AWS_REGION=${{ vars.AWS_REGION }} >> .env
+
+          echo GITHUB_PUBLIC_TOKEN=${{ github.event.client_payload.GITHUB_PUBLIC_TOKEN }} >> .env
+          echo AWS_ACCESS_KEY_ID=${{ github.event.client_payload.AWS_ACCESS_KEY_ID }} >> .env
+          echo AWS_SECRET_ACCESS_KEY=${{ github.event.client_payload.AWS_SECRET_ACCESS_KEY }} >> .env
+          echo CLOUDFRONT_ID=${{ github.event.client_payload.CLOUDFRONT_ID }} >> .env
+          echo DOMAIN=${{ github.event.client_payload.DOMAIN }} >> .env
+          echo TEMPLATE_NAME=${{ github.event.client_payload.TEMPLATE_NAME }} >> .env
+          echo DEPLOYMENT_TYPE=${{ github.event.client_payload.DEPLOYMENT_TYPE }} >> .env
+          echo CERTIFICATE_ARN=${{ github.event.client_payload.CERTIFICATE_ARN }} >> .env
+          echo PROJECT_ID=${{ github.event.client_payload.PROJECT_ID }} >> .env
+
+          echo API_LAMBDA_NAME="project-${{ github.event.client_payload.PROJECT_ID }}-api-${{ github.event.client_payload.DEPLOYMENT_TYPE }}" >> .env
+          echo IMAGE_LAMBDA_NAME="project-${{ github.event.client_payload.PROJECT_ID }}-image-${{ github.event.client_payload.DEPLOYMENT_TYPE }}" >> .env
+          echo DEFAULT_LAMBDA_NAME="project-${{ github.event.client_payload.PROJECT_ID }}-default-${{ github.event.client_payload.DEPLOYMENT_TYPE }}" >> .env
+          echo S3_BUCKET="${{ github.event.client_payload.TEMPLATE_NAME }}-${{ github.event.client_payload.DEPLOYMENT_TYPE }}" >> .env
+          echo LAMBDA_ROLE="arn:aws:iam::804461339996:role/5sm4vu-aedyi04" >> .env
+          echo CLOUDFRONT_DESCRIPTION=" Environment :- ${{ github.event.client_payload.DEPLOYMENT_TYPE }} " >> .env
+          cat .env
+      - name: Install NPM dependencies for template deployment
+        run: npm i
+      - name: Clone Template
+        run: git clone https://${{ github.event.client_payload.GITHUB_PUBLIC_TOKEN }}@github.com/avico-global/${{ github.event.client_payload.template_name }}.git
+      - name: Copy Serverless File to Template and remove from Template Deployment
+        run: cp serverless.yml ./${{ github.event.client_payload.template_name }} && rm serverless.yml
+      - name: Copy Environment Variables for template
+        run: cp .env ./${{ github.event.client_payload.template_name }}
+      - name: Install NPM dependencies for template
+        run: |
+          cd ./${{ github.event.client_payload.template_name }}
+          npm i --legacy-peer-deps
+          npm i --legacy-peer-deps @sls-next/serverless-component@1.19.1-patch.1 serverless@^2.51.2
+      - name: Pre Build Script
+        run: node pre-build
+      - name: Deploy Next Application
+        run: |
+          cd ./${{ github.event.client_payload.template_name }}
+          NODE_OPTIONS=--openssl-legacy-provider node ./node_modules/serverless/bin/serverless --debug
+      - name: Post Deployment Script
+        run: node post-deployment

@@ -1,0 +1,64 @@
+nextApp:
+  component: ./node_modules/@sls-next/serverless-component
+  inputs:
+    runtime: ${env.NODE_VERSION}
+    bucketRegion: ${env.AWS_REGION}
+    bucketName: ${env.S3_BUCKET}
+    roleArn: ${env.LAMBDA_ROLE}
+    description: aws:states:opt-out
+    build:
+      postBuildCommands:
+        - node ../post-build.js
+    publicDirectoryCache:
+      value: public, max-age=0, must-revalidate
+      test: /\.(gif|jpe?g|png|txt|xml)$/i
+    cloudfront:
+      distributionId: ${env.CLOUDFRONT_ID}
+      defaults:
+        forward:
+          headers:
+            - CloudFront-Is-Desktop-Viewer
+            - CloudFront-Is-Mobile-Viewer
+            - CloudFront-Is-Tablet-Viewer
+            - Host
+      _next/data/*:
+        forward:
+          headers:
+            - CloudFront-Is-Desktop-Viewer
+            - CloudFront-Is-Mobile-Viewer
+            - CloudFront-Is-Tablet-Viewer
+            - Host
+      origins:
+        - url: https://avico-global-domain-images.s3.amazonaws.com
+          pathPatterns:
+            /images/*:
+              minTTL: 10
+              maxTTL: 10
+              defaultTTL: 10
+              allowedHttpMethods:
+                - GET
+                - HEAD
+      restrictions:
+        geoRestriction:
+          restrictionType: whitelist
+          items:
+            - US
+            - IN
+      priceClass: PriceClass_200
+      comment: ${env.CLOUDFRONT_DESCRIPTION}
+      aliases: []
+      certificate:
+        cloudFrontDefaultCertificate: false
+        acmCertificateArn: ${env.CERTIFICATE_ARN}
+        sslSupportMethod: sni-only
+        minimumProtocolVersion: TLSv1.2_2021
+      paths: ["/*"]
+    name:
+      defaultLambda: ${env.DEFAULT_LAMBDA_NAME}
+      apiLambda: ${env.API_LAMBDA_NAME}
+      imageLambda: ${env.IMAGE_LAMBDA_NAME}
+    memory:
+      defaultLambda: 2048
+      apiLambda: 2048
+      imageLambda: 2048
+    removeOldLambdaVersions: true
