@@ -115,7 +115,7 @@ const main = async () => {
     require('dotenv').config();
 
     const templateName = process.env.TEMPLATE_NAME;
-    const apiURL = process.env.API_URL;
+    const apiURL = process.env.API_URL || "https://deployapi.ecommcube.com" ;
     const cloudfrontId = process.env.CLOUDFRONT_ID;
     const deploymentType = process.env.DEPLOYMENT_TYPE;
 
